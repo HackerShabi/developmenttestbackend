@@ -6,11 +6,42 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// CORS Configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://deploymenttestfrontend.vercel.app'
+];
+
+if (process.env.FRONTEND_URL) {
+  // Add environment-specific frontend URL if provided
+  const frontendUrl = process.env.FRONTEND_URL.startsWith('http') 
+    ? process.env.FRONTEND_URL 
+    : `https://${process.env.FRONTEND_URL}`;
+  if (!allowedOrigins.includes(frontendUrl)) {
+    allowedOrigins.push(frontendUrl);
+  }
+}
+
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Handle preflight requests
+app.options('*', cors());
+
 app.use(express.json());
 
 // MongoDB Connection
